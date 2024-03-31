@@ -1,8 +1,7 @@
 import copy
-import datetime
-
 import random
-from datetime import time
+
+import time
 
 import pygame
 
@@ -21,7 +20,7 @@ class Board:
         self.board += [[0] * (width // 2 - 1) + [2, 1] + [0] * (width // 2 - 1)]
         self.board += [[0] * width for _ in range(height // 2 + 2)]
         self.player_move = True
-        self.first_move = True
+        self.is_run = True
 
     def render(self):  # отрисовка поля
         for y in range(self.height):
@@ -33,45 +32,18 @@ class Board:
                     play_window.blit(RED_KING, (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
                 if self.board[x][y] == 2:
                     play_window.blit(BLUE_KING, (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
-                if self.board[x][y] == 3 and self.player_move:
-                    pygame.draw.circle(screen, (255, 0, 0),
-                                       (
-                                           x * self.cell_size + self.left + self.cell_size // 2,
-                                           y * self.cell_size + self.top + self.cell_size // 2
-                                       ),
-                                       self.cell_size // 9)
 
     def set_view(self, left, top, cell_size):  # параметры поля
         self.left = left
         self.top = top
         self.cell_size = cell_size
 
-    def run(self):  # игровой цикл
-        while True:
-            if self.player_move:
-                self.get_click(event.pos)
-            else:
-                computer_cells = []
-                for x in range(self.width):
-                    for y in range(self.height):
-                        if self.board[x][y] == 2:
-                            computer_cells.append((x, y))
-
-                            pygame.time.delay(20)
-
-                            if self.computer_move(computer_cells):
-                                self.board[self.computer_move(computer_cells)[0]][
-                                    self.computer_move(computer_cells)[1]] = 2
-                                print(self.computer_move(computer_cells))
-                                self.player_move = True
-                            else:
-                                print('Конец игры')
-                                return
-
     def get_click(self, mouse_pos):  # обработка нажатия, координаты
         cell = self.get_cell(mouse_pos)
-        if cell:
+        if cell and self.player_move:
             self.on_click(cell)
+        else:
+            self.computer_move()
 
     def get_cell(self, mouse_pos):  # активная клетка
         if (mouse_pos[0] < self.height * self.cell_size and
@@ -82,16 +54,21 @@ class Board:
             return None
 
     def on_click(self, cell_coords):  # обработка нажатия игрока, вызов хода
-        while self.player_move and self.is_moves(1,
-                                                 cell_coords[0],
-                                                 cell_coords[1]):
+        if self.is_moves(1, cell_coords[0], cell_coords[1]):
             self.board[cell_coords[0]][cell_coords[1]] = 1
+            self.move(1, cell_coords[0], cell_coords[1])
             self.player_move = False
             print(cell_coords)
+        # else:
+        #     self.is_run = False
 
     def is_moves(self, cell, x, y):  # проверка, является ли ход возможным
 
+        temp = self.board[x][y]
+
         self.board[x][y] = cell
+
+        other_tile = -1
 
         if cell == 1:
             other_tile = 2
@@ -120,8 +97,7 @@ class Board:
                         if x_move == x and y_move == y:
                             break
                         tiles_to_flip.append([x_move, y_move])
-                    self.board[x_move + 1][y_move + 1] = 3
-        self.board[x][y] = 0
+        self.board[x][y] = temp
         if len(tiles_to_flip) == 0:  # Если не перевернуто ни одной фишки, ход невозможен
             return False
         return tiles_to_flip
@@ -153,27 +129,45 @@ class Board:
             self.board[x][y] = cell
         return True
 
-    def computer_move(self, cells):  # ход ИИ
+    def computer_move(self):  # ход ИИ
+
+        pause = time.time() + random.randint(5, 15) * 0.1
+        while time.time() < pause:
+            pygame.display.update()
+
+        computer_cells = []
+
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.board[x][y] == 2:
+                    computer_cells.append((x, y))
 
         best_move = None
 
-        for cell in cells:
+        for cell in computer_cells:
+
             possible_moves = self.get_moves(self.board[cell[0]][cell[1]])
-
-            random.shuffle(possible_moves)
-
             for x, y in possible_moves:
                 if self.is_corner(x, y):
                     return [x, y]
                 else:
                     best_score = -1
                     for x1, y1 in possible_moves:  # Выбираем из всех возможных ходов самый лучший
-                        self.move(self.board[cell[0]][cell[1]], x1, y1)
+                        board = copy.deepcopy(self.board)
+                        self.move(2, x1, y1)
                         score = self.get_score()[2]
                         if score > best_score:
                             best_move = [x1, y1]
                             best_score = score
-        return best_move
+                        self.board = board
+        if best_move:
+            self.board[best_move[0]][best_move[1]] = 2
+
+            self.move(2, best_move[0], best_move[1])
+            self.player_move = True
+            print(best_move[0], best_move[1])
+        else:
+            self.is_run = False
 
     def get_score(self):  # подсчет очков
         r_score = 0
@@ -205,14 +199,26 @@ board.set_view(0, 0, 50)
 
 running = True
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            board.run()
     screen.fill((0, 0, 0))
     screen.blit(SCREEN_BG, (0, 0))
     screen.blit(play_window, (100, 100))
+    if not board.is_run:
+        final_score = board.get_score()
+        max_score = max(final_score.values())
+        for k, v in final_score.items():
+            if final_score[k] == max_score and k == 1:
+                print('Вы победили!')
+            elif final_score[k] == max_score and k == 2:
+                print('Вы проиграли...')
+        break
+    if board.player_move:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                board.get_click(event.pos)
+    else:
+        board.computer_move()
     board.render()
     pygame.display.flip()
 pygame.quit()
