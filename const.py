@@ -1,3 +1,4 @@
+
 import pygame
 
 PLAY_WINDOW_BG = (255, 255, 255)

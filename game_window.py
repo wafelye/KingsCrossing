@@ -1,37 +1,158 @@
+import sys
+
+from const import *
+
 import copy
 import random
-
 import time
 
-import pygame
 
-PLAY_WINDOW_BG = (255, 255, 255)
-SCREEN_BG = pygame.image.load('Images/city_bg.jpg')
-RED_KING = pygame.image.load('Images/red_king/sprite_0.png')
-BLUE_KING = pygame.image.load('Images/blue_king/sprite_0.png')
+class Game:
+    def __init__(self):
+        pygame.init()
 
+        self.width = 10
+        self.height = 10
 
-class Board:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.board = [[0] * width for _ in range(height // 2 - 1)]
-        self.board += [[0] * (width // 2 - 1) + [1, 2] + [0] * (width // 2 - 1)]
-        self.board += [[0] * (width // 2 - 1) + [2, 1] + [0] * (width // 2 - 1)]
-        self.board += [[0] * width for _ in range(height // 2 + 2)]
+        self.size = self.width * 70, self.height * 70
+        self.screen = pygame.display.set_mode(self.size)
+
+        self.play_window = pygame.Surface((self.width * 50, self.height * 50))  # панель с доской
+        self.play_window.fill(PLAY_WINDOW_BG)
+
+        pygame.display.set_caption('Kings Crossing')
+
+        self.board = [[0] * self.width for _ in range(self.height // 2 - 1)]
+        self.board += [[0] * (self.width // 2 - 1) + [1, 2] + [0] * (self.width // 2 - 1)]
+        self.board += [[0] * (self.width // 2 - 1) + [2, 1] + [0] * (self.width // 2 - 1)]
+        self.board += [[0] * self.width for _ in range(self.height // 2 + 2)]
+
+        self.cell_size = 50
+        self.left = 0
+        self.top = 0
+
         self.player_move = True
         self.is_run = True
+
+    def run(self):
+        self.main_menu()
+        pygame.quit()
+        sys.exit()
+
+    def main_menu(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+
+            self.screen.fill((255, 255, 255))
+
+            # Отображение текста и кнопок меню
+            title_game = pygame.image.load('Images/title_sprite.png')
+
+            menu_bg = pygame.image.load('Images/menu_bg.jpg')
+
+            rect_title = title_game.get_rect(topleft=(self.size[0] // 7, 100))
+
+            rect_bg = menu_bg.get_rect(topleft=(0, 0))
+
+            self.screen.blit(menu_bg, rect_bg)
+            self.screen.blit(title_game, rect_title)
+
+            start_button = pygame.Rect((self.size[0] - 200) // 2, self.size[1] // 2 - 30, 200, 60)
+            pygame.draw.rect(self.screen, (247, 185, 49), start_button)
+            font = pygame.font.Font(None, 30)
+            text = font.render("Старт", True, 'black')
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2, self.size[1] // 2 - 10))
+
+            rules_button = pygame.Rect((self.size[0] - 200) // 2, self.size[1] // 2 + 40, 200, 60)
+            pygame.draw.rect(self.screen, (247, 185, 49), rules_button)
+            text = font.render("Правила", True, 'black')
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2, self.size[1] // 2 + 60))
+
+            exit_button = pygame.Rect((self.size[0] - 200) // 2, self.size[1] // 2 + 110, 200, 60)
+            pygame.draw.rect(self.screen, (247, 185, 49), exit_button)
+            text = font.render("Выход", True, 'black')
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2, self.size[1] // 2 + 130))
+
+            # Обработка нажатия кнопок меню
+            mouse_pos = pygame.mouse.get_pos()
+            if start_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    self.play()
+
+            elif rules_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    self.rules()
+            elif exit_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    pygame.quit()
+                    exit()
+            pygame.display.flip()
+        # while running:
+        #     title = pygame.image.load('Images/title_sprite.png')
+        #     image_bg = pygame.image.load('Images/city_bg.jpg')
+        #
+        #     image_title = image_bg.get_rect(topleft=(self.width * 70 // 2 - 300, 20))
+        #
+        #     self.screen.blit(title, image_title)
+        #
+        #     self.screen.blit(image_bg, (0, 0))
+        #     self.screen.blit(image_bg,(0, 0))
+        #
+        #     for event in pygame.event.get():
+        #         if event.type == pygame.QUIT:
+        #             running = False
+        #         # if event.type == pygame.USEREVENT and event.button == exit_button:
+        #         #     running = False
+        #         # if event.type == pygame.USEREVENT and event.button == option_button:
+        #         #     self.settings_menu()
+        #         # if event.type == pygame.USEREVENT and event.button == play_button:
+        #         #     self.win = False
+        #         #     self.game_over = False
+        #
+        #             self.play()
+
+    def play(self):
+        running = True
+        while running:
+            self.screen.fill((0, 0, 0))
+            self.screen.blit(SCREEN_BG, (0, 0))
+            self.screen.blit(self.play_window, (100, 100))
+            if self.player_move:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        self.get_click(event.pos)
+            else:
+                self.computer_move()
+            if not self.is_run:
+                final_score = self.get_score()
+                max_score = max(final_score.values())
+                for k, v in final_score.items():
+                    if final_score[k] == max_score and k == 1:
+                        print('Вы победили!')
+                    elif final_score[k] == max_score and k == 2:
+                        print('Вы проиграли...')
+                break
+            self.render()
+            pygame.display.flip()
+        pygame.quit()
 
     def render(self):  # отрисовка поля
         for y in range(self.height):
             for x in range(self.width):
-                pygame.draw.rect(play_window, (115, 38, 86), (
+                pygame.draw.rect(self.play_window, (115, 38, 86), (
                     x * self.cell_size + self.left, y * self.cell_size + self.top, self.cell_size, self.cell_size),
                                  2)
                 if self.board[x][y] == 1:
-                    play_window.blit(RED_KING, (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
+                    self.play_window.blit(RED_KING,
+                                          (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
                 if self.board[x][y] == 2:
-                    play_window.blit(BLUE_KING, (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
+                    self.play_window.blit(BLUE_KING,
+                                          (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
 
     def set_view(self, left, top, cell_size):  # параметры поля
         self.left = left
@@ -42,8 +163,6 @@ class Board:
         cell = self.get_cell(mouse_pos)
         if cell and self.player_move:
             self.on_click(cell)
-        else:
-            self.computer_move()
 
     def get_cell(self, mouse_pos):  # активная клетка
         if (mouse_pos[0] < self.height * self.cell_size and
@@ -181,44 +300,30 @@ class Board:
         return {1: r_score, 2: b_score}
 
 
-pygame.init()
+Game().run()
 
-board_width = 10
-board_height = 10
-
-size = board_width * 70, board_height * 70
-screen = pygame.display.set_mode(size)
-
-play_window = pygame.Surface((board_width * 50, board_height * 50))  # панель с доской
-play_window.fill(PLAY_WINDOW_BG)
-
-pygame.display.set_caption('Реверси')
-
-board = Board(board_width, board_height)
-board.set_view(0, 0, 50)
-
-running = True
-while running:
-    screen.fill((0, 0, 0))
-    screen.blit(SCREEN_BG, (0, 0))
-    screen.blit(play_window, (100, 100))
-    if not board.is_run:
-        final_score = board.get_score()
-        max_score = max(final_score.values())
-        for k, v in final_score.items():
-            if final_score[k] == max_score and k == 1:
-                print('Вы победили!')
-            elif final_score[k] == max_score and k == 2:
-                print('Вы проиграли...')
-        break
-    if board.player_move:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                board.get_click(event.pos)
-    else:
-        board.computer_move()
-    board.render()
-    pygame.display.flip()
-pygame.quit()
+# running = True
+# while running:
+#     screen.fill((0, 0, 0))
+#     screen.blit(SCREEN_BG, (0, 0))
+#     screen.blit(play_window, (100, 100))
+#     if board.player_move:
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 running = False
+#             if event.type == pygame.MOUSEBUTTONDOWN:
+#                 board.get_click(event.pos)
+#     else:
+#         board.computer_move()
+#     if not board.is_run:
+#         final_score = board.get_score()
+#         max_score = max(final_score.values())
+#         for k, v in final_score.items():
+#             if final_score[k] == max_score and k == 1:
+#                 print('Вы победили!')
+#             elif final_score[k] == max_score and k == 2:
+#                 print('Вы проиграли...')
+#         break
+#     board.render()
+#     pygame.display.flip()
+# pygame.quit()
