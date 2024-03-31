@@ -11,28 +11,38 @@ class Game:
     def __init__(self):
         pygame.init()
 
+        self.clock = pygame.time.Clock()
+
+        self.menu_music = pygame.mixer.Sound('music/menu.mp3')
+
+        self.game_music = pygame.mixer.Sound('music/game.mp3')
+
         self.width = 10
         self.height = 10
 
-        self.size = self.width * 70, self.height * 70
+        self.size = 700, 700
         self.screen = pygame.display.set_mode(self.size)
 
-        self.play_window = pygame.Surface((self.width * 50, self.height * 50))  # панель с доской
+        self.play_window = pygame.Surface((500, 500))  # панель с доской
         self.play_window.fill(PLAY_WINDOW_BG)
 
         pygame.display.set_caption('Kings Crossing')
+        pygame.display.set_icon(RED_KING)
 
         self.board = [[0] * self.width for _ in range(self.height // 2 - 1)]
         self.board += [[0] * (self.width // 2 - 1) + [1, 2] + [0] * (self.width // 2 - 1)]
         self.board += [[0] * (self.width // 2 - 1) + [2, 1] + [0] * (self.width // 2 - 1)]
         self.board += [[0] * self.width for _ in range(self.height // 2 + 2)]
 
+        self.start_board = copy.deepcopy(self.board)
+
         self.cell_size = 50
         self.left = 0
         self.top = 0
 
         self.player_move = True
-        self.is_run = True
+        self.win = False
+        self.lose = False
 
     def run(self):
         self.main_menu()
@@ -40,22 +50,26 @@ class Game:
         sys.exit()
 
     def main_menu(self):
-        while True:
+        self.menu_music.stop()
+        self.menu_music.play(-5)
+        self.game_music.stop()
+
+        title_game = pygame.image.load('Images/title_sprite.png')
+
+        menu_bg = pygame.image.load('Images/menu_bg.jpg')
+
+        rect_title = title_game.get_rect(topleft=(self.size[0] // 7, 100))
+
+        rect_bg = menu_bg.get_rect(topleft=(0, 0))
+
+        running = True
+        while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
-                    exit()
+                    sys.exit()
 
             self.screen.fill((255, 255, 255))
-
-            # Отображение текста и кнопок меню
-            title_game = pygame.image.load('Images/title_sprite.png')
-
-            menu_bg = pygame.image.load('Images/menu_bg.jpg')
-
-            rect_title = title_game.get_rect(topleft=(self.size[0] // 7, 100))
-
-            rect_bg = menu_bg.get_rect(topleft=(0, 0))
 
             self.screen.blit(menu_bg, rect_bg)
             self.screen.blit(title_game, rect_title)
@@ -80,66 +94,146 @@ class Game:
             mouse_pos = pygame.mouse.get_pos()
             if start_button.collidepoint(mouse_pos):
                 if pygame.mouse.get_pressed()[0]:
+                    self.lose = False
+                    self.win = False
                     self.play()
-
-            elif rules_button.collidepoint(mouse_pos):
+            if rules_button.collidepoint(mouse_pos):
                 if pygame.mouse.get_pressed()[0]:
                     self.rules()
-            elif exit_button.collidepoint(mouse_pos):
+            if exit_button.collidepoint(mouse_pos):
                 if pygame.mouse.get_pressed()[0]:
                     pygame.quit()
-                    exit()
+                    sys.exit()
+
             pygame.display.flip()
-        # while running:
-        #     title = pygame.image.load('Images/title_sprite.png')
-        #     image_bg = pygame.image.load('Images/city_bg.jpg')
-        #
-        #     image_title = image_bg.get_rect(topleft=(self.width * 70 // 2 - 300, 20))
-        #
-        #     self.screen.blit(title, image_title)
-        #
-        #     self.screen.blit(image_bg, (0, 0))
-        #     self.screen.blit(image_bg,(0, 0))
-        #
-        #     for event in pygame.event.get():
-        #         if event.type == pygame.QUIT:
-        #             running = False
-        #         # if event.type == pygame.USEREVENT and event.button == exit_button:
-        #         #     running = False
-        #         # if event.type == pygame.USEREVENT and event.button == option_button:
-        #         #     self.settings_menu()
-        #         # if event.type == pygame.USEREVENT and event.button == play_button:
-        #         #     self.win = False
-        #         #     self.game_over = False
-        #
-        #             self.play()
+
+    def rules(self):
+        font = pygame.font.Font(None, 30)
+        text_surface1 = font.render('Играя за красного короля, захватите как можно больше клеток.', True,
+                                    (0, 0, 0))
+        text_surface2 = font.render(
+            'Вы можете захватить несколько клеток противника,', True,
+            (0, 0, 0))
+        text_surface3 = font.render(
+            'захватив их между двумя своего цвета.', True,
+            (0, 0, 0))
+
+        text_rect1 = text_surface1.get_rect(topleft=(self.size[0] - 670, 200))
+        text_rect2 = text_surface2.get_rect(topleft=(self.size[0] - 670, 230))
+        text_rect3 = text_surface3.get_rect(topleft=(self.size[0] - 670, 260))
+
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+            self.screen.fill((143, 227, 216))
+            self.screen.blit(text_surface1, text_rect1)
+            self.screen.blit(text_surface2, text_rect2)
+            self.screen.blit(text_surface3, text_rect3)
+
+            back_button = pygame.Rect((self.size[0] - 200) // 2, self.size[1] // 2 + 200, 200, 60)
+            pygame.draw.rect(self.screen, (11, 64, 57), back_button)
+            text = font.render("Назад", True, 'white')
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2, self.size[1] // 2 + 220))
+
+            mouse_pos = pygame.mouse.get_pos()
+            if back_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    running = False
+                    self.main_menu()
+
+            pygame.display.flip()
 
     def play(self):
+        self.menu_music.stop()
+        self.game_music.play(-5)
+        to_menu_button = pygame.Rect((self.size[0] - 200) // 2 - 200, self.size[1] // 2 - 320, 200, 60)
+        font = pygame.font.Font(None, 30)
+        text = font.render("В меню", True, 'black')
+
         running = True
         while running:
             self.screen.fill((0, 0, 0))
             self.screen.blit(SCREEN_BG, (0, 0))
             self.screen.blit(self.play_window, (100, 100))
+            pygame.draw.rect(self.screen, (247, 185, 49), to_menu_button)
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2 - 200, self.size[1] // 2 - 300))
+
+            if self.lose or self.win:
+                running = False
+                self.end()
+
+            player_cells = []
+            possible_moves = []
+
+            for x in range(self.width):
+                for y in range(self.height):
+                    if self.board[x][y] == 1:
+                        player_cells.append((x, y))
+
+            for cell in player_cells:
+                possible_moves.append(self.get_moves(self.board[cell[0]][cell[1]]))
+
             if self.player_move:
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        running = False
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        self.get_click(event.pos)
+                if possible_moves:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.quit()
+                            sys.exit()
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            self.get_click(event.pos)
+                else:
+                    self.lose = True
+                    running = False
+                    self.end()
             else:
                 self.computer_move()
-            if not self.is_run:
-                final_score = self.get_score()
-                max_score = max(final_score.values())
-                for k, v in final_score.items():
-                    if final_score[k] == max_score and k == 1:
-                        print('Вы победили!')
-                    elif final_score[k] == max_score and k == 2:
-                        print('Вы проиграли...')
-                break
+            mouse_pos = pygame.mouse.get_pos()
+            if to_menu_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    self.play_window.fill(PLAY_WINDOW_BG)
+                    self.board = self.start_board
+                    self.main_menu()
             self.render()
             pygame.display.flip()
         pygame.quit()
+
+    def end(self):
+        font = pygame.font.Font(None, 30)
+        text_surface = font.render('Текст', True, (0, 0, 0))
+        text_rect = text_surface.get_rect(topleft=(self.size[0] - 670, 200))
+
+        final_score = self.get_score()
+        max_score = max(final_score.values())
+        for k, v in final_score.items():
+            if final_score[k] == max_score and k == 1:
+                text_surface = font.render('Вы выиграли!', True, (0, 0, 0))
+                text_rect = text_surface.get_rect(topleft=(self.size[0] - 670, 200))
+            elif final_score[k] == max_score and k == 2:
+                text_surface = font.render('Вы проиграли...', True, (0, 0, 0))
+                text_rect = text_surface.get_rect(topleft=(self.size[0] - 670, 200))
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+
+            self.screen.fill((143, 227, 216))
+            self.screen.blit(text_surface, text_rect)
+
+            back_button = pygame.Rect((self.size[0] - 200) // 2, self.size[1] // 2 + 200, 200, 60)
+            pygame.draw.rect(self.screen, (11, 64, 57), back_button)
+            text = font.render("Назад", True, 'white')
+            self.screen.blit(text, ((self.size[0] - text.get_width()) // 2, self.size[1] // 2 + 220))
+
+            mouse_pos = pygame.mouse.get_pos()
+            if back_button.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed()[0]:
+                    self.main_menu()
+
+            pygame.display.flip()
 
     def render(self):  # отрисовка поля
         for y in range(self.height):
@@ -154,32 +248,24 @@ class Game:
                     self.play_window.blit(BLUE_KING,
                                           (x * self.cell_size + self.left - 7, y * self.cell_size + self.top - 3))
 
-    def set_view(self, left, top, cell_size):  # параметры поля
-        self.left = left
-        self.top = top
-        self.cell_size = cell_size
-
     def get_click(self, mouse_pos):  # обработка нажатия, координаты
         cell = self.get_cell(mouse_pos)
         if cell and self.player_move:
             self.on_click(cell)
+            print(cell)
 
     def get_cell(self, mouse_pos):  # активная клетка
-        if (mouse_pos[0] < self.height * self.cell_size and
-                mouse_pos[1] < self.width * self.cell_size):
+        if (mouse_pos[0] <= self.height * self.cell_size + 100 and
+                mouse_pos[1] <= self.width * self.cell_size + 100):
             return (int(mouse_pos[0] / self.cell_size - 2),
                     int(mouse_pos[1] / self.cell_size - 2))
         else:
             return None
 
     def on_click(self, cell_coords):  # обработка нажатия игрока, вызов хода
-        if self.is_moves(1, cell_coords[0], cell_coords[1]):
-            self.board[cell_coords[0]][cell_coords[1]] = 1
+        if self.board[cell_coords[0]][cell_coords[1]] == 0 and self.is_moves(1, cell_coords[0], cell_coords[1]):
             self.move(1, cell_coords[0], cell_coords[1])
             self.player_move = False
-            print(cell_coords)
-        # else:
-        #     self.is_run = False
 
     def is_moves(self, cell, x, y):  # проверка, является ли ход возможным
 
@@ -196,20 +282,30 @@ class Game:
 
         tiles_to_flip = []
 
-        for x_direction, y_direction in [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]:
+        for x_direction, y_direction in [[0, -1], [-1, -1], [-1, 0], [-1, 1], [1, -1], [0, 1], [1, 1], [1, 0]]:
             x_move, y_move = x, y
             x_move += x_direction
             y_move += y_direction
-            if x_move < self.width and y_move < self.height and self.board[x_move][y_move] == other_tile:
+
+            if not self.on_board(x_move, y_move):
+                continue
+
+            if self.on_board(x_move, y_move) and self.board[x_move][y_move] == other_tile:
 
                 x_move += x_direction
                 y_move += y_direction
 
+                if not self.on_board(x_move, y_move):
+                    continue
+
                 while self.board[x_move][y_move] == other_tile:
                     x_move += x_direction
                     y_move += y_direction
+                    if not self.on_board(x_move, y_move):
+                        break
+                if not self.on_board(x_move, y_move):
+                    continue
                 if self.board[x_move][y_move] == cell:
-                    # Переворачиваем фишки
                     while True:
                         x_move -= x_direction
                         y_move -= y_direction
@@ -221,6 +317,9 @@ class Game:
             return False
         return tiles_to_flip
 
+    def on_board(self, x, y):
+        return 0 <= x < self.width and 0 <= y < self.height
+
     def get_moves(self, cell):  # возможные ходы
         valid_moves = []
 
@@ -229,12 +328,6 @@ class Game:
                 if self.is_moves(cell, x, y):
                     valid_moves.append((x, y))
         return valid_moves
-
-    def is_corner(self, x, y):  # проверка, находится ли активная клетка в углу поля
-        return ((x == 0 and y == 0) or
-                (x == self.width and y == 0) or
-                (x == 0 and y == self.height) or
-                (x == self.width and y == self.height))
 
     def move(self, cell, x, y):  # реализация хода
         tiles_to_flip = self.is_moves(cell, x, y)
@@ -250,7 +343,7 @@ class Game:
 
     def computer_move(self):  # ход ИИ
 
-        pause = time.time() + random.randint(5, 15) * 0.1
+        pause = time.time() + random.randint(5, 9) * 0.1
         while time.time() < pause:
             pygame.display.update()
 
@@ -266,27 +359,21 @@ class Game:
         for cell in computer_cells:
 
             possible_moves = self.get_moves(self.board[cell[0]][cell[1]])
-            for x, y in possible_moves:
-                if self.is_corner(x, y):
-                    return [x, y]
-                else:
-                    best_score = -1
-                    for x1, y1 in possible_moves:  # Выбираем из всех возможных ходов самый лучший
-                        board = copy.deepcopy(self.board)
-                        self.move(2, x1, y1)
-                        score = self.get_score()[2]
-                        if score > best_score:
-                            best_move = [x1, y1]
-                            best_score = score
-                        self.board = board
+            best_score = -1
+            for x1, y1 in possible_moves:  # Выбираем из всех возможных ходов самый лучший
+                board = copy.deepcopy(self.board)
+                self.move(2, x1, y1)
+                score = self.get_score()[2]
+                if score > best_score:
+                    best_move = [x1, y1]
+                    best_score = score
+                self.board = board
         if best_move:
-            self.board[best_move[0]][best_move[1]] = 2
-
             self.move(2, best_move[0], best_move[1])
             self.player_move = True
-            print(best_move[0], best_move[1])
         else:
-            self.is_run = False
+            self.win = True
+            self.end()
 
     def get_score(self):  # подсчет очков
         r_score = 0
@@ -301,29 +388,3 @@ class Game:
 
 
 Game().run()
-
-# running = True
-# while running:
-#     screen.fill((0, 0, 0))
-#     screen.blit(SCREEN_BG, (0, 0))
-#     screen.blit(play_window, (100, 100))
-#     if board.player_move:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 running = False
-#             if event.type == pygame.MOUSEBUTTONDOWN:
-#                 board.get_click(event.pos)
-#     else:
-#         board.computer_move()
-#     if not board.is_run:
-#         final_score = board.get_score()
-#         max_score = max(final_score.values())
-#         for k, v in final_score.items():
-#             if final_score[k] == max_score and k == 1:
-#                 print('Вы победили!')
-#             elif final_score[k] == max_score and k == 2:
-#                 print('Вы проиграли...')
-#         break
-#     board.render()
-#     pygame.display.flip()
-# pygame.quit()
